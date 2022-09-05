@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Configuration;
-using System.IO;
-using System.Text.Json;
 using EmailService;
 
 namespace TicketManagementSystem
@@ -10,7 +7,6 @@ namespace TicketManagementSystem
     {
         public int CreateTicket(string title, Priority priority, string assignedTo, string description, DateTime creationDateTime, bool isPayingCustomer)
         {
-            // Check if t or desc are null or if they are invalid and throw exception
             if (title == null || description == null || title == "" || description == "")
             {
                 throw new InvalidTicketException("Title or description were null");
@@ -92,7 +88,6 @@ namespace TicketManagementSystem
 
             var id = TicketRepository.CreateTicket(ticket);
 
-            // Return the id
             return id;
         }
 
@@ -122,12 +117,6 @@ namespace TicketManagementSystem
             ticket.AssignedUser = user;
 
             TicketRepository.UpdateTicket(ticket);
-        }
-
-        private void WriteTicketToFile(Ticket ticket)
-        {
-            var ticketJson = JsonSerializer.Serialize(ticket);
-            File.WriteAllText(Path.Combine(Path.GetTempPath(), $"ticket_{ticket.Id}.json"), ticketJson);
         }
     }
 
