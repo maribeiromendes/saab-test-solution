@@ -5,125 +5,63 @@ namespace TicketManagementSystem
 {
     public class TicketService
     {
-        public int CreateTicket(string title, Priority priority, string assignedTo, string description, DateTime creationDateTime, bool isPayingCustomer)
+        public int CreateTicket(string title, Priority priority, string assignedUser, string description, DateTime creationDateTime, bool isPayingCustomer)
         {
-            if (title == null || description == null || title == "" || description == "")
-            {
-                throw new InvalidTicketException("Title or description were null");
-            }
+            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(description) || assignedUser == null)
+                throw new InvalidTicketException("Title or description or assignedUser were null");
 
-            User user = null;
-            using (var ur = new UserRepository())
-            {
-                if (assignedTo != null)
-                {
-                    user = ur.GetUser(assignedTo);
-                }
-            }
+            User user = GetUser(assignedUser);
 
-            if (user == null)
-            {
-                throw new UnknownUserException("User " + assignedTo + " not found");
-            }
+            var ticket = new Ticket(title, user, description, creationDateTime, priority);
 
-            var priorityRaised = false;
-            if (creationDateTime < DateTime.UtcNow - TimeSpan.FromHours(1))
-            {
-                if (priority == Priority.Low)
-                {
-                    priority = Priority.Medium;
-                    priorityRaised = true;
-                }
-                else if (priority == Priority.Medium)
-                {
-                    priority = Priority.High;
-                    priorityRaised = true;
-                }
-            }
-
-            if ((title.Contains("Crash") || title.Contains("Important") || title.Contains("Failure")) && !priorityRaised)
-            {
-                if (priority == Priority.Low)
-                {
-                    priority = Priority.Medium;
-                }
-                else if (priority == Priority.Medium)
-                {
-                    priority = Priority.High;
-                }
-            }
-
-            if (priority == Priority.High)
-            {
-                var emailService = new EmailServiceProxy();
-                emailService.SendEmailToAdministrator(title, assignedTo);
-            }
-
-            double price = 0;
-            User accountManager = null;
+            ticket.RaisePriority();
+            
             if (isPayingCustomer)
             {
-                // Only paid customers have an account manager.
-                accountManager = new UserRepository().GetAccountManager();
-                if (priority == Priority.High)
-                {
-                    price = 100;
-                }
-                else
-                {
-                    price = 50;
-                }
+                ticket.AdjustPrice();
+
+                User accountManager = new UserRepository().GetAccountManager();
+                ticket.SetAccountManager(accountManager);
             }
 
-            var ticket = new Ticket()
+            if (ticket.Priority == Priority.High)
             {
-                Title = title,
-                AssignedUser = user,
-                Priority = priority,
-                Description = description,
-                Created = creationDateTime,
-                PriceDollars = price,
-                AccountManager = accountManager
-            };
+                var emailService = new EmailServiceProxy();
+                emailService.SendEmailToAdministrator(title, assignedUser);
+            }
 
             var id = TicketRepository.CreateTicket(ticket);
 
             return id;
         }
 
-        public void AssignTicket(int id, string username)
+        public void AssignTicket(int ticketId, string assignedUser)
         {
-            User user = null;
-            using (var ur = new UserRepository())
-            {
-                if (username != null)
-                {
-                    user = ur.GetUser(username);
-                }
-            }
+            User user = GetUser(assignedUser);
 
-            if (user == null)
-            {
-                throw new UnknownUserException("User not found");
-            }
-
-            var ticket = TicketRepository.GetTicket(id);
+            var ticket = TicketRepository.GetTicket(ticketId);
 
             if (ticket == null)
             {
-                throw new ApplicationException("No ticket found for id " + id);
+                throw new ApplicationException("No ticket found for id " + ticketId);
             }
 
-            ticket.AssignedUser = user;
+            ticket.SetAssignedUser(user);
 
             TicketRepository.UpdateTicket(ticket);
         }
-    }
 
-    public enum Priority
-    {
-        High,
-        Medium,
-        Low
+        private User GetUser(string assignedUser)
+        {
+            using (var userRepository = new UserRepository())
+            {
+                var user = userRepository.GetUser(assignedUser);
+
+                if (user == null)
+                    throw new UnknownUserException("User " + assignedUser + " not found");
+
+                return user;
+            }
+        }
     }
 }
