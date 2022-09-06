@@ -53,10 +53,7 @@ namespace TicketManagementSystem
 
         public void AdjustPrice()
         {
-            if (Priority == Priority.High)
-                PriceDollars = 100;
-            else
-                PriceDollars = 50;
+            PriceDollars = Priority == Priority.High ? 100 : 50;
         }
 
         public void SetAccountManager(User accountManager)

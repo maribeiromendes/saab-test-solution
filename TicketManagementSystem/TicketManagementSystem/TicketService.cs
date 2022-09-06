@@ -37,14 +37,12 @@ namespace TicketManagementSystem
 
         public void AssignTicket(int ticketId, string assignedUser)
         {
-            User user = GetUser(assignedUser);
-
             var ticket = TicketRepository.GetTicket(ticketId);
 
             if (ticket == null)
-            {
                 throw new ApplicationException("No ticket found for id " + ticketId);
-            }
+
+            User user = GetUser(assignedUser);
 
             ticket.SetAssignedUser(user);
 
